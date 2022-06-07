@@ -56,9 +56,9 @@ app.post("/:id/exercises", async (req, res) => {
     res.json({
         _id: user._id,
         username: user.username,
-        duration: req.body.duration,
-        description: req.body.description,
-        date: strftime('%a %d %b %Y', req.body.date)
+        date: moment(exercise.date).format('ddd MMM DD YYYY'),
+        duration: Number(req.body.duration),
+        description: req.body.description
     });
 });
 
@@ -66,35 +66,32 @@ app.get("/:id/logs", async (req, res) => {
     const { id } = req.params;
     const user = await User.findById(id);
 
+    console.log(req.originalUrl, req.params.id)
+
     if (!user) {
         res.status(500).json("Invalid user!");
     }
 
-    let { userId, from, to, limit } = req.query;
+    let { from, to, limit } = req.query;
     from = moment(from, 'YYYY-MM-DD').isValid() ? moment(from, 'YYYY-MM-DD') : 0;
     to = moment(to, 'YYYY-MM-DD').isValid() ? moment(to, 'YYYY-MM-DD') : moment().add(1000000000000);
 
-    const exercise = await Exercise.find({ user: id })
+    const exercises = await Exercise.find({ user: id })
         .where('date')
         .gte(from)
         .lte(to)
-        .limit(+limit).
+        .limit(+limit)
         .select("description date duration -_id");
-
-    const result = exercise.map((obj) => {
-        obj = obj.toObject();
-        return {
-            description: obj.description,
-            duration: obj.duration,
-            date: strftime('%a %d %b %Y', obj.date)
-        };
-    });
 
     res.json({
         _id: user._id,
         username: user.username,
-        count: result.length,
-        log: result
+        count: exercises.length,
+        log: exercises.map(o => ({
+            description: o.description,
+            duration: o.duration,
+            date: moment(o.date).format('ddd MMM DD YYYY')
+        }))
     });
 });
 
